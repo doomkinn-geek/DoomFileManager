@@ -38,6 +38,24 @@ namespace DoomFileManager
             }
         }
 
+        public static int MainPanelHeight //размер главной панели
+        {
+            get { return ElementsOnPage + 2; }
+        }
+
+        public const int InfoPanelHeight = 10;//размер информационной панели
+
+        public static int MessagesPosition
+        {
+            get { return Configuration.MainPanelHeight + Configuration.InfoPanelHeight + 1; }
+        }
+
+        public static int CommandPosition
+        {
+            get { return Configuration.MainPanelHeight + Configuration.InfoPanelHeight; }
+        }
+
+
         private static string ReadSetting(string key)
         {
             try
