@@ -11,7 +11,17 @@ namespace DoomFileManager
         {
             get
             {
-                return Convert.ToInt32(value: ReadSetting("ElementsOnPage"));
+                int res;
+                try
+                {
+                    res = Convert.ToInt32(ReadSetting("ElementsOnPage"));
+                }
+                catch(Exception)
+                {
+                    res = 20;
+                }
+                if (res <= 0) res = 20;
+                return res;
             }
         }
 
