@@ -329,10 +329,13 @@ namespace DoomFileManager
             Console.WriteLine($"      Дата создания: {di.CreationTime.ToString("dd.MM.yyyy")}");
             Console.SetCursorPosition(positionX, positionY);
             positionY++;
-            Console.WriteLine($"Последнее изменение: {di.LastWriteTime.ToString("dd.MM.yyyy")}");            
-            long fullDirSize = 0;
+            Console.WriteLine($"Последнее изменение: {di.LastWriteTime.ToString("dd.MM.yyyy")}");
 
-            /*if(CalculateFolderSize != null)
+
+            //при попытке остановить предыдущий поток подсчета, возникает исключение System.PlatformNotSupportedException :(
+            
+            /*long fullDirSize = 0;
+            if(CalculateFolderSize != null)
                 if (CalculateFolderSize.IsAlive)
                     CalculateFolderSize.Abort();
             
@@ -358,8 +361,8 @@ namespace DoomFileManager
             });
             CalculateFolderSize.Start();*/
 
-                     
-            
+
+
         }
 
         public static void GetTotalSize(string directory, ref long totalSize)

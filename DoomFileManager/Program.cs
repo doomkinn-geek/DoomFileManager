@@ -61,6 +61,7 @@ namespace DoomFileManager
                 ConsoleDrawings.TakeNewCommand();
                 currentCommand = Console.ReadLine();
                 ConsoleDrawings.ClearMessageLine();
+                arguments.Clear();//по завершении обработки команды очищаем список аргументов, чтобы корректно обработать следующую команду            
                 arguments.AddRange(currentCommand.Split(' '));
 
                 string theCommand = arguments[0];
@@ -72,7 +73,10 @@ namespace DoomFileManager
                         exit = true;
                         break;
                     case "ls":
-                        CDCommand(arguments);
+                        LSCommand(arguments);
+                        break;
+                    case "cp":
+                        CPCommand(arguments);
                         break;
                     case "help":
                         ConsoleDrawings.PrintInformation("Поддерживаемые команды: exit; ls; cp; rm; file. Введите команду с ключом /? чтобы получить подробное описание");
@@ -99,7 +103,7 @@ namespace DoomFileManager
             }
             catch (Exception) { }
         }
-        static void CDCommand(List<string> arguments)
+        static void LSCommand(List<string> arguments)
         {
             int pageNum;
             if (arguments.Count == 0)
@@ -172,10 +176,129 @@ namespace DoomFileManager
                 CurrentPath = resPath;
                 ConsoleDrawings.PrintFoldersTree(CurrentPath, CurrentFoldersFiles, pageNum);
                 //ConsoleDrawings.PrintError("Невозможно распознать команду, - аргументов более 2х");
-            }
-            arguments.Clear();//по завершении обработки команды очищаем список аргументов, чтобы корректно обработать следующую команду            
+            }            
         }
-        
+
+        static void CPCommand(List<string> arguments)
+        {
+            if (arguments.Count == 0)
+            {
+                ConsoleDrawings.PrintError("Неверные параметры...");
+                return;
+            }
+            else if (arguments.Count == 1)
+            {
+                if (arguments[0].Trim() == "/?")
+                {
+                    ConsoleDrawings.PrintInformation("cp <путь - откуда копируем> <путь куда копируем> - копирование файла/каталога");
+                }
+                else
+                {
+                    ConsoleDrawings.PrintError("Неправильный вызов команды cp");
+                }
+            }
+            else if (arguments.Count == 2)
+            {
+                string source = arguments[0];
+                string dest = arguments[1];
+                if (source.Trim() == dest.Trim())
+                {
+                    ConsoleDrawings.PrintError("Нельзя скопировать файл/папку саму в себя");
+                }
+                else if(source.Trim() == "" || dest.Trim() == "")
+                {
+                    ConsoleDrawings.PrintError("Неверные аргументы");
+                }
+                else
+                {
+                    Copy(source, dest);
+                }
+            }
+            else
+            {
+                string resSourcePath = arguments[0];
+                string resDestPath = "";
+                int indexOfStartDest = 0;//индекс начала второго параметра
+                for (int i = 1; i < arguments.Count; i++)
+                {
+                    resSourcePath += " ";                    
+                    if (arguments[i].Substring(1,2) != ":")
+                        resSourcePath += arguments[i];
+                    else
+                    {
+                        indexOfStartDest = i;
+                        break;
+                    }
+                }
+                resSourcePath = resSourcePath.Trim();
+                for(int i = indexOfStartDest; i < arguments.Count; i++)
+                {
+                    resDestPath += arguments[i];
+                    resDestPath += " ";
+                }
+                resDestPath = resDestPath.Trim();
+                Copy(resSourcePath, resDestPath);
+            }
+        }
+
+        //Если в параметрах существует путь с пробелом, то нужно сначала разобрать пути, потому запускать копирование
+        //поэтому вынес непосредственно копирование в отдельную процедуру
+        static void Copy(string source, string dest)
+        {
+            FileAttributes attr = File.GetAttributes(source);
+            if (attr.HasFlag(FileAttributes.Directory))
+            {
+                if (CopyDirectory(source, dest))
+                    ConsoleDrawings.PrintInformation("Копирование завершено...");
+            }
+            else
+            {
+                try
+                {
+                    File.Copy(source, dest, true);
+                    ConsoleDrawings.PrintInformation("Копирование завершено...");
+                }
+                catch (Exception e)
+                {
+                    ConsoleDrawings.PrintError($"Ошибка копирования: {e.Message}");
+                }
+            }
+        }
+
+        static bool CopyDirectory(string sourceDirName, string destDirName)
+        {
+            try
+            {
+                DirectoryInfo dir = new DirectoryInfo(sourceDirName);
+                DirectoryInfo[] dirs = dir.GetDirectories();
+
+                if (!Directory.Exists(destDirName))
+                {
+                    Directory.CreateDirectory(destDirName);
+                }
+
+                FileInfo[] files = dir.GetFiles();
+                foreach (FileInfo file in files)
+                {
+                    string temppath = Path.Combine(destDirName, file.Name);
+                    file.CopyTo(temppath, true);
+                    ConsoleDrawings.PrintInformation($"Копируем {file.Name}");
+                }
+
+                foreach (DirectoryInfo subdir in dirs)
+                {
+                    string temppath = Path.Combine(destDirName, subdir.Name);
+                    CopyDirectory(subdir.FullName, temppath);
+                }
+                return true;
+            }
+            catch(Exception e)
+            {
+                ConsoleDrawings.PrintError($"Ошибка копирования: {e.Message}");
+                return false;
+            }
+        }
+
         static void SetCurrentPath(string path)
         {
             if(!Directory.Exists(path))
