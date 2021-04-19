@@ -437,21 +437,29 @@ namespace DoomFileManager
             ClearMainPanel();
             PrintFileInformation(file);
 
-            Console.SetCursorPosition(positionX, positionY);            
+            Console.SetCursorPosition(positionX, positionY);
 
-            using (StreamReader sr = new StreamReader(file, Encoding.Default))
+            try
             {
-                string oneString = String.Empty;
-                while ((oneString = sr.ReadLine()) != null)
+                using (StreamReader sr = new StreamReader(file, Encoding.Default))
                 {
-                    if (positionY > Configuration.ElementsOnPage)
-                        break;
-                    oneString = oneString.Substring(0, Configuration.ConsoleWidth - 3);
-                    Console.SetCursorPosition(positionX, positionY);
-                    Console.WriteLine(oneString);
-                    positionY++;
+                    string oneString = String.Empty;
+                    while ((oneString = sr.ReadLine()) != null)
+                    {
+                        if (positionY > Configuration.ElementsOnPage)
+                            break;
+                        if(oneString.Length > Configuration.ConsoleWidth - 3)
+                            oneString = oneString.Substring(0, Configuration.ConsoleWidth - 3);
+                        Console.SetCursorPosition(positionX, positionY);
+                        Console.WriteLine(oneString);
+                        positionY++;
+                    }
+                    Console.WriteLine();
                 }
-                Console.WriteLine();
+            }
+            catch(Exception e)
+            {
+                PrintError($"Ошибка чтения файла: {e.Message}");
             }
         }
 
