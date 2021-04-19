@@ -441,6 +441,8 @@ namespace DoomFileManager
 
             try
             {
+                Console.ForegroundColor = textColor;
+                Console.BackgroundColor = textBackgroundColor;
                 using (StreamReader sr = new StreamReader(file, Encoding.Default))
                 {
                     string oneString = String.Empty;
