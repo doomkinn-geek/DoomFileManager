@@ -157,9 +157,7 @@ namespace DoomFileManager
         private static void PrintMessage(int position, string text)//непосредственно печать сообщения
         {
             Console.SetCursorPosition(0, position);
-            Console.Write(new String(' ', Configuration.ConsoleWidth));
-            Console.SetCursorPosition(0, position+1);
-            Console.Write(new String(' ', Configuration.ConsoleWidth));
+            Console.Write(new String(' ', Configuration.ConsoleWidth));            
             Console.SetCursorPosition(0, position);
             Console.Write(text);
             Console.ForegroundColor = ConsoleColor.White;
@@ -437,10 +435,11 @@ namespace DoomFileManager
             positionX = 2;
             positionY = 1;
             ClearMainPanel();
+            PrintFileInformation(file);
 
             Console.SetCursorPosition(positionX, positionY);            
 
-            using (StreamReader sr = new StreamReader(file, Encoding.Unicode))
+            using (StreamReader sr = new StreamReader(file, Encoding.Default))
             {
                 string oneString = String.Empty;
                 while ((oneString = sr.ReadLine()) != null)
@@ -453,6 +452,36 @@ namespace DoomFileManager
                     positionY++;
                 }
                 Console.WriteLine();
+            }
+        }
+
+        public static void PrintFileInformation(string file)
+        {
+            ClearInformationPanel();
+            try
+            {
+                FileInfo f = new FileInfo(file);
+                int positionX, positionY;
+                positionX = 2;
+                positionY = Configuration.MainPanelHeight + 1;
+                Console.SetCursorPosition(positionX, positionY);
+                positionY++;
+                Console.ForegroundColor = infoColor;
+                Console.BackgroundColor = textBackgroundColor;
+                Console.WriteLine($"                   Путь: {f.FullName}");
+                Console.SetCursorPosition(positionX, positionY);
+                positionY++;
+                Console.WriteLine($"          Дата создания: {f.CreationTime.ToString("dd.MM.yyyy")}");
+                Console.SetCursorPosition(positionX, positionY);
+                positionY++;
+                Console.WriteLine($"    Последнее изменение: {f.LastWriteTime.ToString("dd.MM.yyyy")}");
+                Console.SetCursorPosition(positionX, positionY);
+                positionY++;
+                Console.WriteLine($"                    Тип: {f.Extension}");
+            }
+            catch(Exception e)
+            {
+                ClearInformationPanel();
             }
         }
 
