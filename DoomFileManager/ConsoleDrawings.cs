@@ -334,19 +334,19 @@ namespace DoomFileManager
             positionY++;
             Console.ForegroundColor = infoColor;
             Console.BackgroundColor = textBackgroundColor;
-            Console.WriteLine($"               Путь: {rootFolder}");
+            Console.WriteLine($"                   Путь: {rootFolder}");
             DirectoryInfo di = new DirectoryInfo(rootFolder);
             Console.SetCursorPosition(positionX, positionY);
             positionY++;
-            Console.WriteLine($"      Дата создания: {di.CreationTime.ToString("dd.MM.yyyy")}");
+            Console.WriteLine($"          Дата создания: {di.CreationTime.ToString("dd.MM.yyyy")}");
             Console.SetCursorPosition(positionX, positionY);
             positionY++;
-            Console.WriteLine($"Последнее изменение: {di.LastWriteTime.ToString("dd.MM.yyyy")}");
+            Console.WriteLine($"    Последнее изменение: {di.LastWriteTime.ToString("dd.MM.yyyy")}");
             
             string attributes;
             if (rootFolder.Length > 4)
             {
-                attributes = "           Атрибуты: ";
+                attributes = "               Атрибуты: ";
                 if (di.Attributes.HasFlag(FileAttributes.ReadOnly))
                     attributes += "Только для чтения | ";
                 if (di.Attributes.HasFlag(FileAttributes.Archive))
@@ -355,13 +355,27 @@ namespace DoomFileManager
                     attributes += "Системный | ";
                 if (di.Attributes.HasFlag(FileAttributes.Hidden))
                     attributes += "Скрытый | ";
-                if (attributes != "           Атрибуты: ")
+                if (attributes != "               Атрибуты: ")
                 {
                     attributes = attributes.Substring(0, attributes.Length - 3);
                     Console.SetCursorPosition(positionX, positionY);
                     positionY++;
                     Console.WriteLine(attributes);
                 }
+            }
+            else
+            {
+                try
+                {
+                    DriveInfo drive = new DriveInfo(rootFolder);
+                    Console.SetCursorPosition(positionX, positionY);
+                    positionY++;
+                    Console.WriteLine($"Доступно места на диске: {ToPrettySize(drive.AvailableFreeSpace)}");
+                    Console.SetCursorPosition(positionX, positionY);
+                    positionY++;
+                    Console.WriteLine($"            Метка диска: {drive.VolumeLabel}");
+                }
+                catch (Exception) { }
             }
 
 
@@ -392,7 +406,7 @@ namespace DoomFileManager
                     positionY++;
                     Console.ForegroundColor = infoColor;
                     Console.BackgroundColor = textBackgroundColor;
-                    Console.WriteLine($"        Общий объем: {size}");
+                    Console.WriteLine($"            Общий объем: {size}");
                 }
                 ConsoleDrawings.TakeNewCommand();
             };
@@ -404,7 +418,7 @@ namespace DoomFileManager
                 Console.SetCursorPosition(positionX, positionY);
                 Console.ForegroundColor = infoColor;
                 Console.BackgroundColor = textBackgroundColor;
-                Console.WriteLine($"        Общий объем: <расчитывается...>");
+                Console.WriteLine($"            Общий объем: <расчитывается...>");
                 CalculateFolderSize = Task.Factory.StartNew(action, token);
                 ConsoleDrawings.TakeNewCommand();
             }

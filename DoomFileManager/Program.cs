@@ -6,7 +6,7 @@ using System.IO;
 
 namespace DoomFileManager
 {
-    
+
     class Program
     {
         private static string _currentPath;
@@ -23,11 +23,11 @@ namespace DoomFileManager
         {
             //фиксируем размеры окна, чтобы нельзя было его изменить
             WindowUtility.FixeConsoleWindow(Configuration.ConsoleHeight, Configuration.ConsoleWidth);
-                        
+
             //рисуем рамку для основной панели с папками/файлами
             ConsoleDrawings.PrintFrameLines(0, 0, Console.WindowWidth, Configuration.MainPanelHeight);
             ConsoleDrawings.PrintFrameLines(0, Configuration.MainPanelHeight, Console.WindowWidth, Configuration.InfoPanelHeight);
-            
+
 
             //считывание сохраненного пути с последнего сеанса работы
             if (File.Exists("last.state"))
@@ -80,18 +80,21 @@ namespace DoomFileManager
                     case "cp":
                         CPCommand(arguments);
                         break;
+                    case "rm":
+                        RMCommand(arguments);
+                        break;
                     case "help":
                         ConsoleDrawings.PrintInformation("Поддерживаемые команды: exit; ls; cp; rm; file. Введите команду с ключом /? чтобы получить подробное описание");
                         break;
                     case "":
                         arguments.Clear();
-                        break;                    
+                        break;
                     default:
                         ConsoleDrawings.PrintWarning($"Невозможно обработать команду {theCommand}");
                         arguments.Clear();
                         break;
                 }
-            }           
+            }
         }
 
         static void SaveLastState()
@@ -101,7 +104,7 @@ namespace DoomFileManager
                 using (StreamWriter sw = new StreamWriter("last.state", false, System.Text.Encoding.Default))
                 {
                     sw.WriteLine(CurrentPath);
-                }                
+                }
             }
             catch (Exception) { }
         }
@@ -113,9 +116,9 @@ namespace DoomFileManager
                 ConsoleDrawings.PrintError("Неверные параметры...");
                 return;
             }
-            else if(arguments.Count == 1)
+            else if (arguments.Count == 1)
             {
-                if(arguments[0] == "/?")
+                if (arguments[0] == "/?")
                 {
                     ConsoleDrawings.PrintInformation("ls <путь> <номер страницы> - команда выводит дерево указанного каталога с указанным номером страницы");
                 }
@@ -132,21 +135,21 @@ namespace DoomFileManager
                         ConsoleDrawings.PrintFoldersTree(CurrentPath, CurrentFoldersFiles, 1);
                     }
                 }
-                else if(Directory.Exists(arguments[0]))//если не указан номер страницы, выводим первую
+                else //if(Directory.Exists(arguments[0]))//если не указан номер страницы, выводим первую
                 {
                     CurrentPath = arguments[0];
                     ConsoleDrawings.PrintFoldersTree(CurrentPath, CurrentFoldersFiles, 1);
-                }    
-                
+                }
+
             }
-            else if(arguments.Count == 2)//если два аргумента в команде, значит можно реализовать команду
+            else if (arguments.Count == 2)//если два аргумента в команде, значит можно реализовать команду
             {
                 CurrentPath = arguments[0];//первый аргумент должен быть путь                
                 try
                 {
                     pageNum = Convert.ToInt32(arguments[1]);
                 }
-                catch(FormatException)
+                catch (FormatException)
                 {
                     pageNum = 1;
                     ConsoleDrawings.PrintWarning("Некорректный аргумент <номер страницы> - выводим 1ю страницу...");
@@ -178,7 +181,7 @@ namespace DoomFileManager
                 CurrentPath = resPath;
                 ConsoleDrawings.PrintFoldersTree(CurrentPath, CurrentFoldersFiles, pageNum);
                 //ConsoleDrawings.PrintError("Невозможно распознать команду, - аргументов более 2х");
-            }            
+            }
         }
 
         static void CPCommand(List<string> arguments)
@@ -207,7 +210,7 @@ namespace DoomFileManager
                 {
                     ConsoleDrawings.PrintError("Нельзя скопировать файл/папку саму в себя");
                 }
-                else if(source.Trim() == "" || dest.Trim() == "")
+                else if (source.Trim() == "" || dest.Trim() == "")
                 {
                     ConsoleDrawings.PrintError("Неверные аргументы");
                 }
@@ -242,7 +245,7 @@ namespace DoomFileManager
                     }
                 }
                 resSourcePath = resSourcePath.Trim();
-                for(int i = indexOfStartDest; i < arguments.Count; i++)
+                for (int i = indexOfStartDest; i < arguments.Count; i++)
                 {
                     resDestPath += arguments[i];
                     resDestPath += " ";
@@ -311,10 +314,82 @@ namespace DoomFileManager
                 }
                 return true;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 ConsoleDrawings.PrintError($"Ошибка копирования: {e.Message}");
                 return false;
+            }
+        }
+
+        static void RMCommand(List<string> arguments)
+        {
+            if (arguments.Count == 0)
+            {
+                ConsoleDrawings.PrintError("Неверные параметры...");
+                return;
+            }
+            else if (arguments.Count == 1)
+            {
+                if (arguments[0].Trim() == "/?")
+                {
+                    ConsoleDrawings.PrintInformation("rm <путь к папке/файлу, которую/который необходимо удалить>");
+                }
+                else
+                {
+                    Delete(arguments[0]);
+                }
+            }            
+            else
+            {
+                string resPath = arguments[0];
+                for (int i = 1; i < arguments.Count; i++)
+                {
+                    resPath += " ";
+                    resPath += arguments[i];
+                }
+                resPath = resPath.Trim();                
+                Delete(resPath);
+            }
+        }
+
+        static void Delete(string path)
+        {            
+            FileInfo file;
+            DirectoryInfo directories;
+            try
+            {
+                FileAttributes attr = File.GetAttributes(path);
+                if (attr.HasFlag(FileAttributes.Directory))
+                {
+                    directories = new DirectoryInfo(path);
+                    foreach (DirectoryInfo dir in directories.GetDirectories())
+                    {
+                        ConsoleDrawings.PrintInformation($"Удаляем {dir.Name}");
+                        dir.Delete(true);
+                    }
+                    if (directories.FullName == CurrentPath)
+                    {
+                        CurrentPath = directories.Parent.FullName;//присваиваем, чтобы сработала процедура, которая обновит список
+                        ConsoleDrawings.PrintFoldersTree(CurrentPath, CurrentFoldersFiles, 1);
+                    }
+                    directories.Delete(true);
+                }
+                else
+                {
+                    file = new FileInfo(path);
+                    file.Delete();
+                    if (file.Directory.FullName == CurrentPath)
+                    {
+                        CurrentPath = file.Directory.FullName;//присваиваем, чтобы сработала процедура, которая обновит список
+                        ConsoleDrawings.PrintFoldersTree(CurrentPath, CurrentFoldersFiles, 1);
+                    }
+                }
+                ConsoleDrawings.PrintInformation("Удаление завершено");
+            }
+            catch (Exception e)
+            {
+                ConsoleDrawings.PrintError(e.Message);
+                return;
             }
         }
 
