@@ -83,6 +83,9 @@ namespace DoomFileManager
                     case "rm":
                         RMCommand(arguments);
                         break;
+                    case "file":
+                        FILECommand(arguments);
+                        break;
                     case "help":
                         ConsoleDrawings.PrintInformation("Поддерживаемые команды: exit; ls; cp; rm; file. Введите команду с ключом /? чтобы получить подробное описание");
                         break;
@@ -390,6 +393,56 @@ namespace DoomFileManager
             {
                 ConsoleDrawings.PrintError(e.Message);
                 return;
+            }
+        }
+
+        static void FILECommand(List<string> arguments)
+        {
+            if (arguments.Count == 0)
+            {
+                ConsoleDrawings.PrintError("Неверные параметры...");
+                return;
+            }
+            else if (arguments.Count == 1)
+            {
+                if (arguments[0].Trim() == "/?")
+                {
+                    ConsoleDrawings.PrintInformation("file <путь к файлу, который необходимо вывести>");
+                }
+                else
+                {
+                    ReadFile(arguments[0]);
+                }
+            }
+            else
+            {
+                string resPath = arguments[0];
+                for (int i = 1; i < arguments.Count; i++)
+                {
+                    resPath += " ";
+                    resPath += arguments[i];
+                }
+                resPath = resPath.Trim();
+                ReadFile(resPath);
+            }
+        }
+
+        static void ReadFile(string path)
+        {
+            try
+            {
+                if(!File.Exists(path))
+                {
+                    ConsoleDrawings.PrintError($"Файл {path} не существует/не доступен");
+                }
+                else
+                {
+                    ConsoleDrawings.PrintFileContent(path);
+                }
+            }
+            catch(Exception e)
+            {
+                ConsoleDrawings.PrintError($"Ошибка чтения файла: {e.Message}");
             }
         }
 

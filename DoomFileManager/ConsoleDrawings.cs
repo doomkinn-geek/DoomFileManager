@@ -35,8 +35,8 @@ namespace DoomFileManager
         private const ConsoleColor warningColor = ConsoleColor.DarkYellow;
         private const ConsoleColor errorColor = ConsoleColor.Red;
         private const ConsoleColor fileColor = ConsoleColor.Cyan;
-                
-        static CancellationTokenSource cancelTokenSource;        
+
+        static CancellationTokenSource cancelTokenSource;
         static CancellationToken token;
         private static Task CalculateFolderSize;
         private static string CurrentFolder;
@@ -121,11 +121,11 @@ namespace DoomFileManager
             Console.Write(new string(' ', Configuration.ConsoleWidth));
             Console.SetCursorPosition(0, Configuration.CommandPosition);*/
             //ClearMessageLine();
-            PrintMessage(Configuration.CommandPosition, "Command>");            
+            PrintMessage(Configuration.CommandPosition, "Command>");
         }
 
         public static void ClearMessageLine()//очищаем поле с информационным сообщением:
-        {            
+        {
             Console.SetCursorPosition(0, Configuration.CommandPosition + 1);
             Console.Write(new String(' ', Configuration.ConsoleWidth));
         }
@@ -158,6 +158,8 @@ namespace DoomFileManager
         {
             Console.SetCursorPosition(0, position);
             Console.Write(new String(' ', Configuration.ConsoleWidth));
+            Console.SetCursorPosition(0, position+1);
+            Console.Write(new String(' ', Configuration.ConsoleWidth));
             Console.SetCursorPosition(0, position);
             Console.Write(text);
             Console.ForegroundColor = ConsoleColor.White;
@@ -166,25 +168,25 @@ namespace DoomFileManager
 
         public static void PrintFoldersTree(string rootFolder, List<FileSystemInfo> content, int pageNum)//вовод дерева каталогов
         {
-            if(content.Count == 0)
+            if (content.Count == 0)
             {
                 //если список файлов/папок пуст, ничего не выводим, просто оставляем старое дерево
-                if(!Directory.Exists(rootFolder))
+                if (!Directory.Exists(rootFolder))
                     return;
                 //если директория существует, но она пуста, то дерево все равно надо вывести
-            }            
+            }
             //рисуем в заголовке текущую директорию + номер страницы
             int maxPage;
             string header = rootFolder;
             if (content.Count != 0)
-            {                
+            {
                 float pageNumCoefficent = (float)content.Count / (float)Configuration.ElementsOnPage;
-                maxPage = (int)Math.Ceiling(pageNumCoefficent);                
+                maxPage = (int)Math.Ceiling(pageNumCoefficent);
             }
             else // если папки отсутствуют в текущей директории вручную пишем количество страниц
             {
                 maxPage = 1;
-            }            
+            }
             if (pageNum > maxPage)
             {
                 pageNum = maxPage;
@@ -203,7 +205,7 @@ namespace DoomFileManager
             Console.SetCursorPosition(positionX, positionY);
             Console.WriteLine(rootFolder);
             positionY++;
-            if(pageNum != 1)//если выводим не 1ю страницу, то рисуем дополнительно "<..>", чтобы было понятно, то это не начало дерева
+            if (pageNum != 1)//если выводим не 1ю страницу, то рисуем дополнительно "<..>", чтобы было понятно, то это не начало дерева
             {
                 Console.SetCursorPosition(positionX, positionY);
                 Console.Write(TreeLines.DownContinue);
@@ -211,9 +213,9 @@ namespace DoomFileManager
                 Console.Write("<..>");
                 positionY++;
             }
-            
+
             for (int i = (pageNum - 1) * Configuration.ElementsOnPage; i < content.Count; i++)
-            {                
+            {
                 Console.SetCursorPosition(positionX, positionY);
                 positionY++;
                 if (i + 1 == content.Count)//если последний элемент дерева, то рисуем завершающую закорючку
@@ -255,9 +257,9 @@ namespace DoomFileManager
                         continue;
                     }*/
                     Console.ForegroundColor = textColor;
-                    Console.Write("{0, -15}", "<ПАПКА>");                    
+                    Console.Write("{0, -15}", "<ПАПКА>");
                 }
-                else if(content[i] is FileInfo)
+                else if (content[i] is FileInfo)
                 {
                     Console.ForegroundColor = textColor;
                     string memSize;
@@ -265,14 +267,14 @@ namespace DoomFileManager
                     {
                         memSize = ToPrettySize(((FileInfo)content[i]).Length);
                     }
-                    catch(Exception)
+                    catch (Exception)
                     {
                         memSize = "0";
                     }
                     //для более читабельного вывода, дополняем строку проблеми
                     string sep = new string(' ', 7 - memSize.Length);
                     memSize = sep + memSize;
-                    Console.Write("{0, -15}", memSize);                    
+                    Console.Write("{0, -15}", memSize);
                 }
                 Console.Write("{0, -5}", content[i].LastAccessTime.ToString("dd.MM.yyyy"));
                 Console.Write("\t");
@@ -342,7 +344,7 @@ namespace DoomFileManager
             Console.SetCursorPosition(positionX, positionY);
             positionY++;
             Console.WriteLine($"    Последнее изменение: {di.LastWriteTime.ToString("dd.MM.yyyy")}");
-            
+
             string attributes;
             if (rootFolder.Length > 4)
             {
@@ -383,9 +385,9 @@ namespace DoomFileManager
             //Подсчитываем размер текущей директории в потоке, чтобы можно было остановить его, в случае смены директории
             long fullDirSize = 0;
             if (CalculateFolderSize != null)
-            {                
+            {
                 cancelTokenSource.Cancel();
-            }           
+            }
             Action<object> action = (object obj) =>
             {
                 GetTotalSize(rootFolder, ref fullDirSize, token);
@@ -397,7 +399,7 @@ namespace DoomFileManager
                 catch (Exception)
                 {
                     size = "0";
-                }                
+                }
                 if (fullDirSize != -1)
                 {
                     Console.SetCursorPosition(positionX, positionY);
@@ -425,6 +427,32 @@ namespace DoomFileManager
             catch (Exception e)
             {
                 //PrintError(e.Message);
+            }
+        }
+
+        public static void PrintFileContent(string file)
+        {
+            PrintMainPanelHeader(file);
+            int positionX, positionY;
+            positionX = 2;
+            positionY = 1;
+            ClearMainPanel();
+
+            Console.SetCursorPosition(positionX, positionY);            
+
+            using (StreamReader sr = new StreamReader(file, Encoding.Unicode))
+            {
+                string oneString = String.Empty;
+                while ((oneString = sr.ReadLine()) != null)
+                {
+                    if (positionY > Configuration.ElementsOnPage)
+                        break;
+                    oneString = oneString.Substring(0, Configuration.ConsoleWidth - 3);
+                    Console.SetCursorPosition(positionX, positionY);
+                    Console.WriteLine(oneString);
+                    positionY++;
+                }
+                Console.WriteLine();
             }
         }
 
@@ -499,7 +527,7 @@ namespace DoomFileManager
             for(int i = 0; i < Configuration.MainPanelHeight - 2; i++)
             {
                 Console.SetCursorPosition(posistionX, positionY + i);
-                Console.Write(new string(' ', Configuration.ConsoleWidth - 3));
+                Console.Write(new string(' ', Configuration.ConsoleWidth - 2));
             }
         }
 
