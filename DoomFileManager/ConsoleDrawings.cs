@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 
 namespace DoomFileManager
 {
@@ -33,7 +34,7 @@ namespace DoomFileManager
         private const ConsoleColor warningColor = ConsoleColor.DarkYellow;
         private const ConsoleColor errorColor = ConsoleColor.Red;
         private const ConsoleColor fileColor = ConsoleColor.Cyan;
-
+        private static Thread CalculateFolderSize;
 
         public static void PrintFrameLines(int positionX, int positionY, int sizeX, int sizeY)//рисуем линиями очертания панели по заданным размерам и кординатам
         {
@@ -307,7 +308,7 @@ namespace DoomFileManager
                 : asGb > 1 ? string.Format("{0} Gb", asGb)
                 : asMb > 1 ? string.Format("{0} Mb", asMb)
                 : asKb > 1 ? string.Format("{0} Kb", asKb)
-                : string.Format("{0}B", Math.Round((double)value, decimalPlaces));
+                : string.Format("{0} B", Math.Round((double)value, decimalPlaces));
             return chosenValue;
         }
 
@@ -330,19 +331,35 @@ namespace DoomFileManager
             positionY++;
             Console.WriteLine($"Последнее изменение: {di.LastWriteTime.ToString("dd.MM.yyyy")}");            
             long fullDirSize = 0;
-            GetTotalSize(rootFolder, ref fullDirSize);
-            string size;
-            try
+
+            /*if(CalculateFolderSize != null)
+                if (CalculateFolderSize.IsAlive)
+                    CalculateFolderSize.Abort();
+            
+            CalculateFolderSize = new Thread(() =>
             {
-                size = ToPrettySize(fullDirSize);
-            }
-            catch (Exception)
-            {
-                size = "0";
-            }
-            Console.SetCursorPosition(positionX, positionY);
-            positionY++;
-            Console.WriteLine($"        Общий объем: {size}");
+                GetTotalSize(rootFolder, ref fullDirSize);
+
+                string size;
+                try
+                {
+                    size = ToPrettySize(fullDirSize);
+                }
+                catch (Exception)
+                {
+                    size = "0";
+                }
+                Console.SetCursorPosition(positionX, positionY);
+                positionY++;
+                Console.ForegroundColor = infoColor;
+                Console.BackgroundColor = textBackgroundColor;
+                Console.WriteLine($"        Общий объем: {size}");
+                ConsoleDrawings.TakeNewCommand();
+            });
+            CalculateFolderSize.Start();*/
+
+                     
+            
         }
 
         public static void GetTotalSize(string directory, ref long totalSize)
@@ -401,7 +418,7 @@ namespace DoomFileManager
 
         private static void ClearMainPanel()//очистка дерева каталогов
         {
-            int posistionX = 2;
+            int posistionX = 1;
             int positionY = 1;            
             for(int i = 0; i < Configuration.MainPanelHeight - 2; i++)
             {
@@ -414,7 +431,7 @@ namespace DoomFileManager
         {
             int positionX;
             int positionY;
-            positionX = 2;
+            positionX = 1;
             positionY = Configuration.MainPanelHeight + 1;
             for (int i = 0; i < Configuration.InfoPanelHeight - 2; i++)
             {
