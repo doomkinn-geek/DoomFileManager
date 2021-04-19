@@ -19,34 +19,42 @@ namespace DoomFileManager
                 catch(Exception)
                 {
                     res = 20;
+                    return res;
                 }
                 if (res <= 0) res = 20;
                 return res;
             }
         }
 
+        public static void SetElementsOnPage(int value)
+        {
+            AddUpdateAppSettings("ElementsOnPage", value.ToString());
+        }
+
         public static int ConsoleHeight
         {
             get
             {
-                if(Convert.ToInt32(ReadSetting("ConsoleHeight")) < ElementsOnPage)
+                /*if(Convert.ToInt32(ReadSetting("ConsoleHeight")) < ElementsOnPage)
                 {
                     return ElementsOnPage + 12;
                 }
                 else
                 {
                     return Convert.ToInt32(ReadSetting("ConsoleHeight"));
-                }
+                }*/
+                int resHeight = MainPanelHeight + InfoPanelHeight + ComandPanelHeight;
+                return resHeight;
             }
         }
 
-        public static int ConsoleWidth
-        {
+        public const int ConsoleWidth = 120;//константа, чтобы не подстраивать отступы под параметризированную ширину
+        /*{
             get
             {
                 return Convert.ToInt32(ReadSetting("ConsoleWidth"));                
             }
-        }
+        }*/
 
         public static int MainPanelHeight //размер главной панели
         {
@@ -54,6 +62,8 @@ namespace DoomFileManager
         }
 
         public const int InfoPanelHeight = 10;//размер информационной панели
+
+        public const int ComandPanelHeight = 3;
 
         public static int MessagesPosition
         {

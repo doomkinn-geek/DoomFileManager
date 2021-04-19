@@ -29,9 +29,10 @@ namespace DoomFileManager
         private const ConsoleColor frameBackgroundColor = ConsoleColor.Black;
         private const ConsoleColor textColor = ConsoleColor.White;
         private const ConsoleColor textBackgroundColor = ConsoleColor.Black;
-        private const ConsoleColor infoColor = ConsoleColor.Green;
-        private const ConsoleColor warningColor = ConsoleColor.Yellow;
+        private const ConsoleColor infoColor = ConsoleColor.Yellow;
+        private const ConsoleColor warningColor = ConsoleColor.DarkYellow;
         private const ConsoleColor errorColor = ConsoleColor.Red;
+        private const ConsoleColor fileColor = ConsoleColor.Cyan;
 
 
         public static void PrintFrameLines(int positionX, int positionY, int sizeX, int sizeY)//рисуем линиями очертания панели по заданным размерам и кординатам
@@ -154,44 +155,59 @@ namespace DoomFileManager
             Console.BackgroundColor = ConsoleColor.Black;
         }
 
-        public static void PrintFoldersTree(string rootFolder, List<FileSystemInfo> folders, int pageNum)//вовод дерева каталогов
+        public static void PrintFoldersTree(string rootFolder, List<FileSystemInfo> content, int pageNum)//вовод дерева каталогов
         {
-            //рисуем в заголовке текущую директорию + номер страницы
-            if (folders.Count != 0)
+            if(content.Count == 0)
             {
-                string header = rootFolder;
-                float pageNumCoefficent = (float)folders.Count / (float)Configuration.ElementsOnPage;
-                header += $" - [{pageNum}/{Math.Ceiling(pageNumCoefficent)}]";
-                PrintMainPanelHeader(header);
+                //если список файлов/папок пуст, ничего не выводим, просто оставляем старое дерево
+                if(!Directory.Exists(rootFolder))
+                    return;
+                //если директория существует, но она пуста, то дерево все равно надо вывести
+            }
+            //рисуем в заголовке текущую директорию + номер страницы
+            int maxPage;
+            string header = rootFolder;
+            if (content.Count != 0)
+            {                
+                float pageNumCoefficent = (float)content.Count / (float)Configuration.ElementsOnPage;
+                maxPage = (int)Math.Ceiling(pageNumCoefficent);                
             }
             else // если папки отсутствуют в текущей директории вручную пишем количество страниц
             {
-                PrintMainPanelHeader($"{rootFolder} - [1/1]");
+                maxPage = 1;
+            }            
+            if (pageNum > maxPage)
+            {
+                pageNum = maxPage;
+                ConsoleDrawings.PrintWarning($"Некорректный аргумент <номер страницы> максимально допустимая страница - {maxPage}");
             }
-            
-                      
-            int posistionX, positionY;
-            posistionX = 2;
+            header += $" - [{pageNum}/{maxPage}]";
+            PrintMainPanelHeader(header);
+
+
+
+            int positionX, positionY;
+            positionX = 2;
             positionY = 1;
             ClearMainPanel();
 
-            Console.SetCursorPosition(posistionX, positionY);
+            Console.SetCursorPosition(positionX, positionY);
             Console.WriteLine(rootFolder);
             positionY++;
             if(pageNum != 1)//если выводим не 1ю страницу, то рисуем дополнительно "<..>", чтобы было понятно, то это не начало дерева
             {
-                Console.SetCursorPosition(posistionX, positionY);
+                Console.SetCursorPosition(positionX, positionY);
                 Console.Write(TreeLines.DownContinue);
                 Console.Write(TreeLines.Right);
                 Console.Write("<..>");
                 positionY++;
             }
             
-            for (int i = (pageNum - 1) * Configuration.ElementsOnPage; i < folders.Count; i++)
+            for (int i = (pageNum - 1) * Configuration.ElementsOnPage; i < content.Count; i++)
             {                
-                Console.SetCursorPosition(posistionX, positionY);
+                Console.SetCursorPosition(positionX, positionY);
                 positionY++;
-                if (i + 1 == folders.Count)//если последний элемент дерева, то рисуем завершающую закорючку
+                if (i + 1 == content.Count)//если последний элемент дерева, то рисуем завершающую закорючку
                 {
                     Console.Write(TreeLines.DownLast);
                 }
@@ -200,30 +216,177 @@ namespace DoomFileManager
                     Console.Write(TreeLines.DownContinue);
                 }
                 Console.Write(TreeLines.DoubleRight);
-                Console.Write($"{folders[i].Name}");               
 
-                try
+                if (content[i] is DirectoryInfo)
                 {
-                    string[] directories = Directory.GetDirectories(folders[i].FullName);
-                    //если в конкретной папке есть подпааки, помечаем её '[+]', чтобы указать, что есть смысл её просматривать:
-                    if (directories.Length != 0)
-                    {                        
-                        Console.WriteLine("[+]");
-                        Console.Write("\n");
-                    }                  
+                    Console.ForegroundColor = textColor;
                 }
-                catch (Exception)
+                else
                 {
-                    Console.Write("\n");
-                    continue;
-                }                
+                    Console.ForegroundColor = fileColor;
+                }
+                Console.Write("{0, -70}", content[i].Name);
+                Console.ForegroundColor = textColor;
+
+                if (content[i] is DirectoryInfo)
+                {
+                    /*try
+                    {
+                        string[] directories = Directory.GetDirectories(content[i].FullName);
+                        //если в конкретной папке есть подпапки, помечаем её '[+]', чтобы указать, что есть смысл её просматривать:
+                        if (directories.Length != 0)
+                        {
+                            Console.ForegroundColor = warningColor;
+                            Console.WriteLine("[+]");                            
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        Console.Write("\n");
+                        continue;
+                    }*/
+                    Console.ForegroundColor = textColor;
+                    Console.Write("{0, -15}", "<ПАПКА>");                    
+                }
+                else if(content[i] is FileInfo)
+                {
+                    Console.ForegroundColor = textColor;
+                    string memSize;
+                    try
+                    {
+                        memSize = ToPrettySize(((FileInfo)content[i]).Length);
+                    }
+                    catch(Exception)
+                    {
+                        memSize = "0";
+                    }
+                    //для более читабельного вывода, дополняем строку проблеми
+                    string sep = new string(' ', 7 - memSize.Length);
+                    memSize = sep + memSize;
+                    Console.Write("{0, -15}", memSize);                    
+                }
+                Console.Write("{0, -5}", content[i].LastAccessTime.ToString("dd.MM.yyyy"));
+                Console.Write("\t");
+                //вывод атрибутов
+                if ((content[i].Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+                    Console.Write("r");
+                else
+                    Console.Write(".");
+                if ((content[i].Attributes & FileAttributes.Archive) == FileAttributes.Archive)
+                    Console.Write("a");
+                else
+                    Console.Write(".");
+                if ((content[i].Attributes & FileAttributes.System) == FileAttributes.System)
+                    Console.Write("s");
+                else
+                    Console.Write(".");
+                if ((content[i].Attributes & FileAttributes.Hidden) == FileAttributes.Hidden)
+                    Console.Write("h");
+                else
+                    Console.Write(".");
+
+                //    Console.Write("{0, 0}", content[i].Attributes.ToString());
+                Console.Write("\n");
                 if (positionY > Configuration.ElementsOnPage)
                     break;
-            }            
+            }
+            PrintInformation(rootFolder, content);
+        }
+
+        private const long OneKb = 1024;
+        private const long OneMb = OneKb * 1024;
+        private const long OneGb = OneMb * 1024;
+        private const long OneTb = OneGb * 1024;
+        private static string ToPrettySize(this long value, int decimalPlaces = 0)
+        {
+            var asTb = Math.Round((double)value / OneTb, decimalPlaces);
+            var asGb = Math.Round((double)value / OneGb, decimalPlaces);
+            var asMb = Math.Round((double)value / OneMb, decimalPlaces);
+            var asKb = Math.Round((double)value / OneKb, decimalPlaces);
+            string chosenValue = asTb > 1 ? string.Format("{0} Tb", asTb)
+                : asGb > 1 ? string.Format("{0} Gb", asGb)
+                : asMb > 1 ? string.Format("{0} Mb", asMb)
+                : asKb > 1 ? string.Format("{0} Kb", asKb)
+                : string.Format("{0}B", Math.Round((double)value, decimalPlaces));
+            return chosenValue;
+        }
+
+        public static void PrintInformation(string rootFolder, List<FileSystemInfo> content)
+        {
+            ClearInformationPanel();
+            int positionX, positionY;
+            positionX = 2;
+            positionY = Configuration.MainPanelHeight + 1;
+            Console.SetCursorPosition(positionX, positionY);
+            positionY++;
+            Console.ForegroundColor = infoColor;
+            Console.BackgroundColor = textBackgroundColor;
+            Console.WriteLine($"               Путь: {rootFolder}");
+            DirectoryInfo di = new DirectoryInfo(rootFolder);
+            Console.SetCursorPosition(positionX, positionY);
+            positionY++;
+            Console.WriteLine($"      Дата создания: {di.CreationTime.ToString("dd.MM.yyyy")}");
+            Console.SetCursorPosition(positionX, positionY);
+            positionY++;
+            Console.WriteLine($"Последнее изменение: {di.LastWriteTime.ToString("dd.MM.yyyy")}");            
+            long fullDirSize = 0;
+            GetTotalSize(rootFolder, ref fullDirSize);
+            string size;
+            try
+            {
+                size = ToPrettySize(fullDirSize);
+            }
+            catch (Exception)
+            {
+                size = "0";
+            }
+            Console.SetCursorPosition(positionX, positionY);
+            positionY++;
+            Console.WriteLine($"        Общий объем: {size}");
+        }
+
+        public static void GetTotalSize(string directory, ref long totalSize)
+        {
+            string[] files;
+            try
+            {
+                files = System.IO.Directory.GetFiles(directory);
+            }
+            catch(Exception)
+            {
+                return;
+            }
+
+            //string folderSize = string.Empty;
+
+            foreach (string file in files)
+            {
+                totalSize += GetFileSize(file);
+            }
+
+            string[] subDirs = System.IO.Directory.GetDirectories(directory);
+            foreach (string dir in subDirs)
+            {
+                GetTotalSize(dir, ref totalSize);
+            }
+            return;
+        }
+
+        private static long GetFileSize(string path)
+        {
+            try
+            {
+                FileInfo fi = new System.IO.FileInfo(path);
+                return fi.Length;
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         public static void PrintMainPanelHeader(string header)
-        {
+        {            
             Console.ForegroundColor = frameForegroundColor;
             Console.BackgroundColor = frameBackgroundColor;
             Console.SetCursorPosition(0, 0);
@@ -243,6 +406,19 @@ namespace DoomFileManager
             for(int i = 0; i < Configuration.MainPanelHeight - 2; i++)
             {
                 Console.SetCursorPosition(posistionX, positionY + i);
+                Console.Write(new string(' ', Configuration.ConsoleWidth - 3));
+            }
+        }
+
+        private static void ClearInformationPanel()//очистка дерева каталогов
+        {
+            int positionX;
+            int positionY;
+            positionX = 2;
+            positionY = Configuration.MainPanelHeight + 1;
+            for (int i = 0; i < Configuration.InfoPanelHeight - 2; i++)
+            {
+                Console.SetCursorPosition(positionX, positionY + i);
                 Console.Write(new string(' ', Configuration.ConsoleWidth - 3));
             }
         }
