@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace DoomFileManager
 {
@@ -34,7 +35,11 @@ namespace DoomFileManager
         private const ConsoleColor warningColor = ConsoleColor.DarkYellow;
         private const ConsoleColor errorColor = ConsoleColor.Red;
         private const ConsoleColor fileColor = ConsoleColor.Cyan;
-        private static Thread CalculateFolderSize;
+                
+        static CancellationTokenSource cancelTokenSource;        
+        static CancellationToken token;
+        private static Task CalculateFolderSize;
+        private static string CurrentFolder;
 
         public static void PrintFrameLines(int positionX, int positionY, int sizeX, int sizeY)//рисуем линиями очертания панели по заданным размерам и кординатам
         {
@@ -112,6 +117,9 @@ namespace DoomFileManager
             Console.ForegroundColor = textColor;
             Console.BackgroundColor = textBackgroundColor;
 
+            /*Console.SetCursorPosition(0, Configuration.CommandPosition);
+            Console.Write(new string(' ', Configuration.ConsoleWidth));
+            Console.SetCursorPosition(0, Configuration.CommandPosition);*/
             //ClearMessageLine();
             PrintMessage(Configuration.CommandPosition, "Command>");            
         }
@@ -164,7 +172,7 @@ namespace DoomFileManager
                 if(!Directory.Exists(rootFolder))
                     return;
                 //если директория существует, но она пуста, то дерево все равно надо вывести
-            }
+            }            
             //рисуем в заголовке текущую директорию + номер страницы
             int maxPage;
             string header = rootFolder;
@@ -291,14 +299,18 @@ namespace DoomFileManager
                 if (positionY > Configuration.ElementsOnPage)
                     break;
             }
-            PrintInformation(rootFolder, content);
+            if (rootFolder != CurrentFolder)//делаем эту проверку, чтобы не перерасчитывать общий объем папки
+            {
+                PrintInformation(rootFolder, content);
+            }
+            CurrentFolder = rootFolder;
         }
 
         private const long OneKb = 1024;
         private const long OneMb = OneKb * 1024;
         private const long OneGb = OneMb * 1024;
         private const long OneTb = OneGb * 1024;
-        private static string ToPrettySize(this long value, int decimalPlaces = 0)
+        private static string ToPrettySize(this long value, int decimalPlaces = 0)//функция округляет числа с размерами файлов, чтобы удобнее их было читать
         {
             var asTb = Math.Round((double)value / OneTb, decimalPlaces);
             var asGb = Math.Round((double)value / OneGb, decimalPlaces);
@@ -308,7 +320,7 @@ namespace DoomFileManager
                 : asGb > 1 ? string.Format("{0} Gb", asGb)
                 : asMb > 1 ? string.Format("{0} Mb", asMb)
                 : asKb > 1 ? string.Format("{0} Kb", asKb)
-                : string.Format("{0} B", Math.Round((double)value, decimalPlaces));
+                : string.Format("{0}  B", Math.Round((double)value, decimalPlaces));
             return chosenValue;
         }
 
@@ -330,19 +342,39 @@ namespace DoomFileManager
             Console.SetCursorPosition(positionX, positionY);
             positionY++;
             Console.WriteLine($"Последнее изменение: {di.LastWriteTime.ToString("dd.MM.yyyy")}");
-
-
-            //при попытке остановить предыдущий поток подсчета, возникает исключение System.PlatformNotSupportedException :(
             
-            /*long fullDirSize = 0;
-            if(CalculateFolderSize != null)
-                if (CalculateFolderSize.IsAlive)
-                    CalculateFolderSize.Abort();
-            
-            CalculateFolderSize = new Thread(() =>
+            string attributes;
+            if (rootFolder.Length > 4)
             {
-                GetTotalSize(rootFolder, ref fullDirSize);
+                attributes = "           Атрибуты: ";
+                if (di.Attributes.HasFlag(FileAttributes.ReadOnly))
+                    attributes += "Только для чтения | ";
+                if (di.Attributes.HasFlag(FileAttributes.Archive))
+                    attributes += "Архивный | ";
+                if (di.Attributes.HasFlag(FileAttributes.System))
+                    attributes += "Системный | ";
+                if (di.Attributes.HasFlag(FileAttributes.Hidden))
+                    attributes += "Скрытый | ";
+                if (attributes != "           Атрибуты: ")
+                {
+                    attributes = attributes.Substring(0, attributes.Length - 3);
+                    Console.SetCursorPosition(positionX, positionY);
+                    positionY++;
+                    Console.WriteLine(attributes);
+                }
+            }
 
+
+
+            //Подсчитываем размер текущей директории в потоке, чтобы можно было остановить его, в случае смены директории
+            long fullDirSize = 0;
+            if (CalculateFolderSize != null)
+            {                
+                cancelTokenSource.Cancel();
+            }           
+            Action<object> action = (object obj) =>
+            {
+                GetTotalSize(rootFolder, ref fullDirSize, token);
                 string size;
                 try
                 {
@@ -351,21 +383,38 @@ namespace DoomFileManager
                 catch (Exception)
                 {
                     size = "0";
+                }                
+                if (fullDirSize != -1)
+                {
+                    Console.SetCursorPosition(positionX, positionY);
+                    Console.Write(new string(' ', Configuration.ConsoleWidth - 3));
+                    Console.SetCursorPosition(positionX, positionY);
+                    positionY++;
+                    Console.ForegroundColor = infoColor;
+                    Console.BackgroundColor = textBackgroundColor;
+                    Console.WriteLine($"        Общий объем: {size}");
                 }
+                ConsoleDrawings.TakeNewCommand();
+            };
+
+            try
+            {
+                cancelTokenSource = new CancellationTokenSource();
+                token = cancelTokenSource.Token;
                 Console.SetCursorPosition(positionX, positionY);
-                positionY++;
                 Console.ForegroundColor = infoColor;
                 Console.BackgroundColor = textBackgroundColor;
-                Console.WriteLine($"        Общий объем: {size}");
+                Console.WriteLine($"        Общий объем: <расчитывается...>");
+                CalculateFolderSize = Task.Factory.StartNew(action, token);
                 ConsoleDrawings.TakeNewCommand();
-            });
-            CalculateFolderSize.Start();*/
-
-
-
+            }
+            catch (Exception e)
+            {
+                //PrintError(e.Message);
+            }
         }
 
-        public static void GetTotalSize(string directory, ref long totalSize)
+        public static void GetTotalSize(string directory, ref long totalSize, CancellationToken cancelation)
         {
             string[] files;
             try
@@ -373,7 +422,7 @@ namespace DoomFileManager
                 files = System.IO.Directory.GetFiles(directory);
             }
             catch(Exception)
-            {
+            {                
                 return;
             }
 
@@ -381,13 +430,23 @@ namespace DoomFileManager
 
             foreach (string file in files)
             {
+                if (cancelation.IsCancellationRequested)
+                {
+                    totalSize = -1;
+                    return;
+                }
                 totalSize += GetFileSize(file);
             }
 
             string[] subDirs = System.IO.Directory.GetDirectories(directory);
             foreach (string dir in subDirs)
             {
-                GetTotalSize(dir, ref totalSize);
+                if (cancelation.IsCancellationRequested)
+                {
+                    totalSize = -1;
+                    return;
+                }
+                GetTotalSize(dir, ref totalSize, cancelation);
             }
             return;
         }

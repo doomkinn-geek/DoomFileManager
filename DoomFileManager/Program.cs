@@ -27,7 +27,7 @@ namespace DoomFileManager
             //рисуем рамку для основной панели с папками/файлами
             ConsoleDrawings.PrintFrameLines(0, 0, Console.WindowWidth, Configuration.MainPanelHeight);
             ConsoleDrawings.PrintFrameLines(0, Configuration.MainPanelHeight, Console.WindowWidth, Configuration.InfoPanelHeight);
-            ConsoleDrawings.PrintString("C:\\", Configuration.ConsoleWidth / 2, 0);
+            
 
             //считывание сохраненного пути с последнего сеанса работы
             if (File.Exists("last.state"))
@@ -51,6 +51,8 @@ namespace DoomFileManager
                 CurrentPath = "C:\\";
             }
             ConsoleDrawings.PrintFoldersTree(CurrentPath, CurrentFoldersFiles, 1);
+            //справка:
+            ConsoleDrawings.PrintInformation("help - список всех поддерживаемых комманд");
 
             bool exit = false;
             List<string> arguments = new List<string>();
@@ -85,7 +87,7 @@ namespace DoomFileManager
                         arguments.Clear();
                         break;                    
                     default:
-                        ConsoleDrawings.PrintWarning($"Could not find the command {theCommand}");
+                        ConsoleDrawings.PrintWarning($"Невозможно обработать команду {theCommand}");
                         arguments.Clear();
                         break;
                 }
@@ -221,13 +223,22 @@ namespace DoomFileManager
                 int indexOfStartDest = 0;//индекс начала второго параметра
                 for (int i = 1; i < arguments.Count; i++)
                 {
-                    resSourcePath += " ";                    
-                    if (arguments[i].Substring(1,2) != ":")
-                        resSourcePath += arguments[i];
+                    resSourcePath += " ";
+                    if (arguments[i].Length > 1)
+                    {
+                        if (arguments[i].Substring(1, 1) != ":")
+                        {
+                            resSourcePath += arguments[i];
+                        }
+                        else
+                        {
+                            indexOfStartDest = i;
+                            break;
+                        }
+                    }
                     else
                     {
-                        indexOfStartDest = i;
-                        break;
+                        resSourcePath += arguments[i];
                     }
                 }
                 resSourcePath = resSourcePath.Trim();
@@ -245,23 +256,31 @@ namespace DoomFileManager
         //поэтому вынес непосредственно копирование в отдельную процедуру
         static void Copy(string source, string dest)
         {
-            FileAttributes attr = File.GetAttributes(source);
-            if (attr.HasFlag(FileAttributes.Directory))
+            try
             {
-                if (CopyDirectory(source, dest))
-                    ConsoleDrawings.PrintInformation("Копирование завершено...");
+                FileAttributes attr = File.GetAttributes(source);
+
+                if (attr.HasFlag(FileAttributes.Directory))
+                {
+                    if (CopyDirectory(source, dest))
+                        ConsoleDrawings.PrintInformation("Копирование завершено...");
+                }
+                else
+                {
+                    try
+                    {
+                        File.Copy(source, dest, true);
+                        ConsoleDrawings.PrintInformation("Копирование завершено...");
+                    }
+                    catch (Exception e)
+                    {
+                        ConsoleDrawings.PrintError($"Ошибка копирования: {e.Message}");
+                    }
+                }
             }
-            else
+            catch (Exception e)
             {
-                try
-                {
-                    File.Copy(source, dest, true);
-                    ConsoleDrawings.PrintInformation("Копирование завершено...");
-                }
-                catch (Exception e)
-                {
-                    ConsoleDrawings.PrintError($"Ошибка копирования: {e.Message}");
-                }
+                ConsoleDrawings.PrintError(e.Message);
             }
         }
 
